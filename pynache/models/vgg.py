@@ -2,6 +2,7 @@ from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
+from pynache.paths import VGG_NORMALIZED_STATE_DICT
 from torchvision import models
 
 VGG_LAYER_MAP: Dict[int, str] = {
@@ -44,9 +45,14 @@ class VGGFeatures(nn.Module):
         The format is described in the dictionary `FEATURES_CONFIG`.
     """
 
-    def __init__(self, config: str = "default", use_avg_pool: bool = False) -> None:
+    def __init__(
+        self,
+        config: str = "default",
+        use_avg_pool: bool = False,
+        use_normalized_vgg: bool = False,
+    ) -> None:
         super(VGGFeatures, self).__init__()
-        self.model = models.vgg19(pretrained=True).features
+        self.model = self._load_vgg(use_normalized_vgg)
         self.use_avg_pool = use_avg_pool
 
         assert config in FEATURES_CONFIG.keys(), "Invalid configuration passed"
@@ -58,6 +64,14 @@ class VGGFeatures(nn.Module):
                 self.model[layer_num] = nn.AvgPool2d(kernel_size=2, stride=2)
 
         self._freeze()
+
+    def _load_vgg(self, use_normalized_vgg):
+        model = models.vgg19(pretrained=True)
+        if use_normalized_vgg:
+            model.load_state_dict(
+                torch.hub.load_state_dict_from_url(VGG_NORMALIZED_STATE_DICT)
+            )
+        return model.features
 
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         style_features = []

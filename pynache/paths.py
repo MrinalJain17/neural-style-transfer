@@ -24,3 +24,4 @@ def _storage_root() -> Path:
 
 REPOSITORY_ROOT: str = _repository_root().as_posix()
 DEFAULT_IMAGES: str = _storage_root().as_posix()
+VGG_NORMALIZED_STATE_DICT = "https://github.com/MrinalJain17/vgg-normalized/releases/download/v1.0/vgg19_normalized.pth"

@@ -23,8 +23,9 @@ class OriginalStyleTransfer(object):
         normalize=True,
         vgg_config="default",
         use_avg_pool=True,
+        use_normalized_vgg=True,
         init_image="noise",
-        beta=1e3,
+        beta=1e2,
         steps=500,
         lr=1,
     ):
@@ -36,10 +37,8 @@ class OriginalStyleTransfer(object):
         self.resize = resize
         assert init_image in ["noise", "content"], "Invalid initial image passed"
 
-        self._load_images(content=content, style=style)
-        self._load_model(
-            vgg_config=vgg_config, use_avg_pool=use_avg_pool, init_image=init_image
-        )
+        self._load_images(content, style, init_image)
+        self._load_model(vgg_config, use_avg_pool, use_normalized_vgg)
 
         self.compute_style_loss = MSEWrapper()
         self.compute_content_loss = MSEWrapper()
@@ -47,7 +46,7 @@ class OriginalStyleTransfer(object):
         self.style_loss_meter = AverageMeter()
         self.content_loss_meter = AverageMeter()
 
-    def _load_images(self, content, style):
+    def _load_images(self, content, style, init_image):
         self.content_image = (
             load_content(content, self.resize, self.normalize)
             .unsqueeze(dim=0)
@@ -58,18 +57,19 @@ class OriginalStyleTransfer(object):
             .unsqueeze(dim=0)
             .to(self.device)
         )
-
-    def _load_model(self, vgg_config, use_avg_pool, init_image):
-        self.vgg_features = VGGFeatures(
-            config=vgg_config, use_avg_pool=use_avg_pool
-        ).to(self.device)
-
         if init_image == "noise":
             self.generated_image = torch.randn_like(
                 self.content_image, requires_grad=True, device=self.device
             )
         else:
             self.generated_image = self.content_image.clone().requires_grad_(True)
+
+    def _load_model(self, vgg_config, use_avg_pool, use_normalized_vgg):
+        self.vgg_features = VGGFeatures(
+            config=vgg_config,
+            use_avg_pool=use_avg_pool,
+            use_normalized_vgg=use_normalized_vgg,
+        ).to(self.device)
 
     def train(self):
         _, content_features = self.vgg_features(self.content_image)
