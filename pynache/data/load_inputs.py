@@ -11,13 +11,10 @@ CONTENT_ROOT: Path = Path(DEFAULT_IMAGES) / "inputs" / "content"
 
 
 def _load(path: str, resize: Tuple[int, int], normalize: bool) -> torch.Tensor:
-    image = read_image(path)
+    image = read_image(path).float().div(255)
 
     if resize is None:
         return image
-
-    if normalize:
-        image = image.float()
 
     transform = get_transform(resize=resize, normalize=normalize)
     return transform(image)
