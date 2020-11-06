@@ -44,7 +44,7 @@ class VGGFeatures(nn.Module):
         The format is described in the dictionary `FEATURES_CONFIG`.
     """
 
-    def __init__(self, config: str = "default", use_avg_pool: bool = True) -> None:
+    def __init__(self, config: str = "default", use_avg_pool: bool = False) -> None:
         super(VGGFeatures, self).__init__()
         self.model = models.vgg19(pretrained=True).features
         self.use_avg_pool = use_avg_pool
@@ -53,6 +53,10 @@ class VGGFeatures(nn.Module):
         self.style_layers = FEATURES_CONFIG[config]["style"]
         self.content_layers = FEATURES_CONFIG[config]["content"]
 
+        for layer_num, layer in enumerate(self.model):
+            if isinstance(layer, nn.MaxPool2d) and self.use_avg_pool:
+                self.model[layer_num] = nn.AvgPool2d(kernel_size=2, stride=2)
+
         self._freeze()
 
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
@@ -60,9 +64,6 @@ class VGGFeatures(nn.Module):
         content_features = []
 
         for layer_num, layer in enumerate(self.model):
-            if isinstance(layer, nn.MaxPool2d) and self.use_avg_pool:
-                layer = nn.AvgPool2d(kernel_size=2, stride=2)
-
             x = layer(x)
 
             current_layer = VGG_LAYER_MAP.get(layer_num, None)
