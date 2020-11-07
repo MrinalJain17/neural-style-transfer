@@ -16,10 +16,6 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ARTIFACTS_PATH = (Path(REPOSITORY_ROOT) / "wandb_artifacts").as_posix()
 Path(ARTIFACTS_PATH).mkdir(exist_ok=True)
 
-wandb.init(
-    name="Original Style Transfer", project="neural-style-transfer", dir=ARTIFACTS_PATH
-)
-
 
 class OriginalStyleTransfer(object):
     def __init__(
@@ -151,6 +147,11 @@ class OriginalStyleTransfer(object):
 
 
 def main(args):
+    wandb.init(
+        name="Original Style Transfer",
+        project="neural-style-transfer",
+        dir=ARTIFACTS_PATH,
+    )
     wandb.config.update(args)
 
     args_dict = vars(args)
