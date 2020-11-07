@@ -151,8 +151,9 @@ class OriginalStyleTransfer(object):
 
 
 def main(args):
-    args_dict = vars(args)
+    wandb.config.update(args)
 
+    args_dict = vars(args)
     model = OriginalStyleTransfer(**args_dict)
     model.train()
 
@@ -215,6 +216,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    wandb.config.update(args)
-
     main(args)
