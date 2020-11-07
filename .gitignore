@@ -227,4 +227,5 @@ $RECYCLE.BIN/
 
 
 # Custom
-images/sample_outputs/
+wandb_artifacts/
+wandb/

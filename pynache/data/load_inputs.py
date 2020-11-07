@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import List
 
 import torch
 from pynache.data.transforms import get_transform
@@ -10,7 +10,7 @@ STYLE_ROOT: Path = Path(DEFAULT_IMAGES) / "inputs" / "style"
 CONTENT_ROOT: Path = Path(DEFAULT_IMAGES) / "inputs" / "content"
 
 
-def _load(path: str, resize: Tuple[int, int], normalize: bool) -> torch.Tensor:
+def _load(path: str, resize: List[int], normalize: bool) -> torch.Tensor:
     image = read_image(path).float().div(255)
 
     if resize is None:
@@ -21,7 +21,7 @@ def _load(path: str, resize: Tuple[int, int], normalize: bool) -> torch.Tensor:
 
 
 def load_style(
-    name: str, resize: Tuple[int, int] = (512, 512), normalize: bool = False
+    name: str, resize: List[int] = [512, 512], normalize: bool = False
 ) -> torch.Tensor:
     path = list(STYLE_ROOT.glob(f"{name}.*"))
     assert len(path) == 1, f"Style image '{name}' does not exist"
@@ -31,7 +31,7 @@ def load_style(
 
 
 def load_content(
-    name: str, resize: Tuple[int, int] = (512, 512), normalize: bool = False
+    name: str, resize: List[int] = [512, 512], normalize: bool = False
 ) -> torch.Tensor:
     path = list(CONTENT_ROOT.glob(f"{name}.*"))
     assert len(path) == 1, f"Content image '{name}' does not exist"

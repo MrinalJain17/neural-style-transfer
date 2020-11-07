@@ -3,6 +3,8 @@ from typing import List
 import torch
 import torch.nn as nn
 
+STYLE_WEIGHING_SCHEMES = ["default", "improved"]
+
 
 def gram_matrix(feature_maps: torch.Tensor) -> torch.Tensor:
     gram = torch.einsum("bxhw,byhw->bxy", feature_maps, feature_maps)
@@ -12,7 +14,7 @@ def gram_matrix(feature_maps: torch.Tensor) -> torch.Tensor:
 class StyleLoss(nn.Module):
     def __init__(self, num_layers, weights="default"):
         super(StyleLoss, self).__init__()
-        assert weights in ["default", "improved"], "Invalid weighing scheme passed"
+        assert weights in STYLE_WEIGHING_SCHEMES, "Invalid weighing scheme passed"
         if weights == "default":
             self.weights = [1.0 for _ in range(num_layers)]
         else:

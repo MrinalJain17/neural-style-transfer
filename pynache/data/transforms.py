@@ -1,11 +1,12 @@
-from typing import Tuple
+from typing import List
 
 import numpy as np
+import torch
 from torchvision import transforms
 
 
 def get_transform(
-    resize: Tuple[int, int] = (512, 512), normalize: bool = False
+    resize: List[int] = [512, 512], normalize: bool = False
 ) -> transforms.Compose:
     transform = transforms.Compose([transforms.Resize(resize)])
 
@@ -18,3 +19,10 @@ def get_transform(
         )
 
     return transform
+
+
+def denormalize(image: torch.Tensor):
+    mean = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1).type_as(image)
+    std = torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1).type_as(image)
+
+    return torch.clamp((image * std) + mean, 0, 1)
