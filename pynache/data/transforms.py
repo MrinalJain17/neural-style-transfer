@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from torchvision import transforms
 
+_MUL = 255.0
+
 
 def get_transform(
     resize: List[int] = [512, 512], normalize: bool = False
@@ -13,8 +15,8 @@ def get_transform(
     if normalize:
         transform.transforms.append(
             transforms.Normalize(
-                mean=np.array([0.485, 0.456, 0.406]),
-                std=np.array([0.229, 0.224, 0.225]),
+                mean=np.array([0.485, 0.456, 0.406]) * _MUL,
+                std=np.array([1.0, 1.0, 1.0]),
             )
         )
 
@@ -22,7 +24,7 @@ def get_transform(
 
 
 def denormalize(image: torch.Tensor):
-    mean = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1).type_as(image)
-    std = torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1).type_as(image)
+    mean = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1).type_as(image) * _MUL
+    std = torch.tensor([1.0, 1.0, 1.0]).view(-1, 1, 1).type_as(image)
 
-    return torch.clamp((image * std) + mean, 0, 1)
+    return torch.clamp((image * std) + mean, 0, _MUL)

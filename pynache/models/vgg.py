@@ -28,7 +28,9 @@ FEATURES_CONFIG: Dict = {
     "default": {
         "style": ["conv1_1", "conv2_1", "conv3_1", "conv4_1", "conv5_1"],
         "content": ["conv4_2"],
-    }
+    },
+    "improved": {"style": list(VGG_LAYER_MAP.values()), "content": ["conv4_2"]},
+    "recommended": {"style": list(VGG_LAYER_MAP.values()), "content": ["conv5_2"]},
 }
 
 
