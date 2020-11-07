@@ -33,5 +33,4 @@ Execute the following command from the root of the repository to install the pro
 
 ### Code Repositories
 
-1. [Keras implementation of NST](https://github.com/titu1994/Neural-Style-Transfer)
-2. [NST tutorial by Aladdin Persson](https://github.com/aladdinpersson/Machine-Learning-Collection/tree/master/ML/Pytorch/more_advanced/neuralstyle)
+1. [Neural Style Transfer by Somshubra Majumdar](https://github.com/titu1994/Neural-Style-Transfer)
