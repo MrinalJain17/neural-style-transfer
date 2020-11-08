@@ -1,3 +1,8 @@
+"""Different components comprising the perceptual loss
+
+Note that the loss functions do not normalize with respect to the batch size.
+"""
+
 from typing import List, Tuple
 
 import torch
@@ -42,12 +47,12 @@ class StyleLoss(nn.Module):
 
         loss_list = []
         for (input, target, weight) in zip(inputs, targets, self.weights):
-            B, C, H, W = input.size()
+            _, C, H, W = input.size()
             G, A = (
-                gram_matrix(input, self.activation_shift) / (C * C * H * W),
-                gram_matrix(target, self.activation_shift) / (C * C * H * W),
+                gram_matrix(input, self.activation_shift) / (C * H * W),
+                gram_matrix(target, self.activation_shift) / (C * H * W),
             )
-            loss_list.append(weight * F.mse_loss(G, A, reduction="sum") / B)
+            loss_list.append(weight * F.mse_loss(G, A, reduction="sum"))
 
         return sum(loss_list)
 
@@ -69,12 +74,12 @@ class StyleLossChained(nn.Module):
         target_grams = []
 
         def _compute_gram(arr1, arr2):
-            B, C1, H, W = arr1.size()
+            _, C1, H, W = arr1.size()
             _, C2, _, _ = arr2.size()
 
             arr2 = F.interpolate(arr2, size=(H, W))
             return gram_chain((arr1, arr2), shift=self.activation_shift) / (
-                C1 * C2 * H * W
+                ((C1 * C2) ** 0.5) * H * W
             )  # Shape: (B, C1, C2)
 
         for idx in range(self.num_layers - 1):
@@ -83,8 +88,7 @@ class StyleLossChained(nn.Module):
 
         loss_list = []
         for (G, A, weight) in zip(input_grams, target_grams, self.weights):
-            B, _, _ = G.size()
-            loss_list.append(weight * F.mse_loss(G, A, reduction="sum") / B)
+            loss_list.append(weight * F.mse_loss(G, A, reduction="sum"))
 
         return sum(loss_list)
 
@@ -97,4 +101,23 @@ class ContentLoss(nn.Module):
         assert (len(inputs) == 1) and (len(targets) == 1)
 
         input, target = inputs[0], targets[0]
-        return F.mse_loss(input, target)
+        _, C, H, W = input.size()
+        return F.mse_loss(input, target, reduction="sum") / (C * H * W)
+
+
+class TotalVariation(nn.Module):
+    """Total Variation Loss
+
+    Code adapted from the implementation in the library Kornia:
+    (https://kornia.readthedocs.io/en/latest/losses.html#kornia.losses.TotalVariation)
+    """
+
+    def __init__(self):
+        super(TotalVariation, self).__init__()
+
+    def forward(self, input: torch.Tensor):
+        assert input.ndim == 4, "Expected input of shape (B, C, H, W)"
+        pixel_dif1 = (input[..., 1:, :] - input[..., :-1, :]).abs()
+        pixel_dif2 = (input[..., :, 1:] - input[..., :, :-1]).abs()
+
+        return pixel_dif1.sum() + pixel_dif2.sum()

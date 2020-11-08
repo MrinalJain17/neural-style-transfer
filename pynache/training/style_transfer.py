@@ -20,16 +20,18 @@ class OriginalStyleTransfer(object):
         style: str,
         resize: List[int] = [512, 512],
         vgg_config: str = "default",
-        use_avg_pool: bool = True,
+        use_max_pool: bool = False,
         layer_weighing: str = "default",
         activation_shift: bool = False,
         chained_gram: bool = False,
+        tv_strength: float = 0,
         alpha: float = 1e-3,
         init_image: str = "noise",
         steps: int = 500,
         logger: WandbLogger = None,
     ):
         self.device = DEVICE
+        self.tv_strength = tv_strength
         self.alpha = alpha
         self.steps = steps
         self.logger = logger
@@ -37,7 +39,7 @@ class OriginalStyleTransfer(object):
         self.content_image, self.style_image, self.generated_image = self._load_images(
             content, style, init_image, resize
         )
-        self.vgg_features = self._load_model(vgg_config, use_avg_pool)
+        self.vgg_features = self._load_model(vgg_config, use_max_pool)
 
         _loss_fx = losses.StyleLossChained if chained_gram else losses.StyleLoss
         self.compute_style_loss = _loss_fx(
@@ -46,6 +48,7 @@ class OriginalStyleTransfer(object):
             activation_shift=activation_shift,
         )
         self.compute_content_loss = losses.ContentLoss()
+        self.compute_total_variation = losses.TotalVariation()
 
     def _load_images(self, content, style, init_image, resize):
         assert init_image in ["noise", "content"], "Invalid initial image passed"
@@ -67,9 +70,9 @@ class OriginalStyleTransfer(object):
 
         return content_image, style_image, generated_image
 
-    def _load_model(self, vgg_config, use_avg_pool):
+    def _load_model(self, vgg_config, use_max_pool):
         return VGGFeatures(
-            config=vgg_config, use_avg_pool=use_avg_pool, use_normalized_vgg=True,
+            config=vgg_config, use_avg_pool=(not use_max_pool), use_normalized_vgg=True,
         ).to(self.device)
 
     def train(self):
@@ -112,16 +115,29 @@ class OriginalStyleTransfer(object):
 
         style_loss = self.compute_style_loss(generated_style, style_features)
         content_loss = self.compute_content_loss(generated_content, content_features)
-        total_loss = (self.alpha * content_loss) + style_loss
-        self.logger._log(style_loss, content_loss, total_loss, step)
+        total_variation = self.compute_total_variation(self.generated_image)
+        total_loss = (
+            (self.alpha * content_loss)
+            + style_loss
+            + (self.tv_strength * total_variation)
+        )
 
+        self.logger._log(style_loss, content_loss, total_loss, step)
         return total_loss
 
 
 def main(args):
     args_dict = vars(args)
+    is_improved = (
+        (args.vgg_config != "default")
+        or (args.layer_weighing != "default")
+        or (args.tv_strength != 0)
+        or args.activation_shift
+        or args.chained_gram
+    )
 
-    logger = WandbLogger(name="Original Style Transfer", args=args)
+    name = "Improved Style Transfer" if is_improved else "Original Style Transfer"
+    logger = WandbLogger(name=name, args=args)
     args_dict["logger"] = logger
 
     model = OriginalStyleTransfer(**args_dict)
@@ -151,10 +167,10 @@ if __name__ == "__main__":
         help="Describes the set of layers to be used for extracting style/content features",
     )
     parser.add_argument(
-        "--use_avg_pool",
-        type=bool,
-        default=True,
-        help="Use average-pooling instead of max-pooling in VGG",
+        "--use_max_pool",
+        action="store_true",
+        default=False,
+        help="Use max-pooling instead of average-pooling in the VGG network",
     )
 
     # Suggested improvements for loss functions and gram matrix computation
@@ -167,15 +183,21 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--activation_shift",
-        type=bool,
+        action="store_true",
         default=False,
         help="Shift the activations when computing the gram matrix",
     )
     parser.add_argument(
         "--chained_gram",
-        type=bool,
+        action="store_true",
         default=False,
         help="Compute gram matrices between adjacent layers (chaining)",
+    )
+    parser.add_argument(
+        "--tv_strength",
+        type=float,
+        default=0,
+        help="Strength of the total variation loss",
     )
 
     # Training/optimization arguments
