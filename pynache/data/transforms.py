@@ -13,7 +13,8 @@ def get_transform(
     if normalize:
         transform.transforms.append(
             transforms.Normalize(
-                mean=np.array([0.485, 0.456, 0.406]), std=np.array([1.0, 1.0, 1.0]),
+                mean=np.array([0.485, 0.456, 0.406]),
+                std=np.array([0.229, 0.224, 0.225]),
             )
         )
 
@@ -22,6 +23,6 @@ def get_transform(
 
 def denormalize(image: torch.Tensor):
     mean = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1).type_as(image)
-    std = torch.tensor([1.0, 1.0, 1.0]).view(-1, 1, 1).type_as(image)
+    std = torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1).type_as(image)
 
     return torch.clamp((image * std) + mean, 0, 1)
