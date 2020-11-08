@@ -62,7 +62,7 @@ class NeuralStyleTransfer(object):
         )
 
         generated_image = (
-            (torch.rand_like(content_image, device=self.device) * 255) - 128
+            torch.rand_like(content_image, device=self.device) - 0.5
             if init_image == "noise"
             else content_image.clone()
         ).requires_grad_(True)
