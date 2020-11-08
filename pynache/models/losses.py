@@ -48,9 +48,10 @@ class StyleLoss(nn.Module):
         loss_list = []
         for (input, target, weight) in zip(inputs, targets, self.weights):
             _, C, H, W = input.size()
+            denom = 2 * C * H * W
             G, A = (
-                gram_matrix(input, self.activation_shift) / (C * H * W),
-                gram_matrix(target, self.activation_shift) / (C * H * W),
+                gram_matrix(input, self.activation_shift) / denom,
+                gram_matrix(target, self.activation_shift) / denom,
             )
             loss_list.append(weight * F.mse_loss(G, A, reduction="sum"))
 
@@ -76,11 +77,10 @@ class StyleLossChained(nn.Module):
         def _compute_gram(arr1, arr2):
             _, C1, H, W = arr1.size()
             _, C2, _, _ = arr2.size()
+            denom = 2 * ((C1 * C2) ** 0.5) * H * W
 
             arr2 = F.interpolate(arr2, size=(H, W))
-            return gram_chain((arr1, arr2), shift=self.activation_shift) / (
-                ((C1 * C2) ** 0.5) * H * W
-            )  # Shape: (B, C1, C2)
+            return gram_chain((arr1, arr2), shift=self.activation_shift) / denom
 
         for idx in range(self.num_layers - 1):
             input_grams.append(_compute_gram(inputs[idx], inputs[idx + 1]))
@@ -101,8 +101,7 @@ class ContentLoss(nn.Module):
         assert (len(inputs) == 1) and (len(targets) == 1)
 
         input, target = inputs[0], targets[0]
-        _, C, H, W = input.size()
-        return F.mse_loss(input, target, reduction="sum") / (C * H * W)
+        return F.mse_loss(input, target, reduction="sum") / 2.0
 
 
 class TotalVariation(nn.Module):

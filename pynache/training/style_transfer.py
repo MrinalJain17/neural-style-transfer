@@ -4,7 +4,6 @@ from typing import List
 import torch
 import torch.optim as optim
 from pynache.data import load_content, load_style
-from pynache.data.transforms import _MUL
 from pynache.models import VGGFeatures, losses
 from pynache.models.vgg import FEATURES_CONFIG
 from pynache.training.logger import WandbLogger
@@ -13,7 +12,7 @@ from tqdm import tqdm
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class OriginalStyleTransfer(object):
+class NeuralStyleTransfer(object):
     def __init__(
         self,
         content: str,
@@ -63,7 +62,7 @@ class OriginalStyleTransfer(object):
         )
 
         generated_image = (
-            (torch.rand_like(content_image, device=self.device) * _MUL) - 128
+            torch.rand_like(content_image, device=self.device) - 0.5
             if init_image == "noise"
             else content_image.clone()
         ).requires_grad_(True)
@@ -115,7 +114,11 @@ class OriginalStyleTransfer(object):
 
         style_loss = self.compute_style_loss(generated_style, style_features)
         content_loss = self.compute_content_loss(generated_content, content_features)
-        total_variation = self.compute_total_variation(self.generated_image)
+        if self.tv_strength == 0:
+            total_variation = 0
+        else:
+            total_variation = self.compute_total_variation(self.generated_image)
+
         total_loss = (
             (self.alpha * content_loss)
             + style_loss
@@ -140,7 +143,7 @@ def main(args):
     logger = WandbLogger(name=name, args=args)
     args_dict["logger"] = logger
 
-    model = OriginalStyleTransfer(**args_dict)
+    model = NeuralStyleTransfer(**args_dict)
     model.train()
 
 
