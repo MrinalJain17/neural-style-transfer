@@ -26,10 +26,11 @@ def gram_chain(feature_maps: Tuple[torch.Tensor, torch.Tensor], shift: int = 0):
 
 def _compute_weights(num_layers, weight_type="default"):
     assert weight_type in STYLE_WEIGHING_SCHEMES, "Invalid weighing scheme passed"
-    if weight_type == "default":
-        weights = [1.0 for _ in range(num_layers)]
-    else:
-        weights = [2 ** (num_layers - (i + 1)) for i in range(num_layers)]
+    weights = (
+        [1.0 for _ in range(num_layers)]
+        if weight_type == "default"
+        else [2 ** (num_layers - (i + 1)) for i in range(num_layers)]
+    )
 
     sum_ = sum(weights)
     return [w / sum_ for w in weights]

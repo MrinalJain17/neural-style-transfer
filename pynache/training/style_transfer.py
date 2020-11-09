@@ -18,21 +18,23 @@ class NeuralStyleTransfer(object):
         content: str,
         style: str,
         resize: List[int] = [512, 512],
-        vgg_config: str = "default",
-        use_max_pool: bool = False,
-        layer_weighing: str = "default",
         activation_shift: bool = False,
+        vgg_config: str = "default",
         chained_gram: bool = False,
+        layer_weighing: str = "default",
         tv_strength: float = 0,
         alpha: float = 1e-3,
         init_image: str = "noise",
+        use_max_pool: bool = False,
         steps: int = 500,
+        use_adam: bool = False,
         logger: WandbLogger = None,
     ):
         self.device = DEVICE
         self.tv_strength = tv_strength
         self.alpha = alpha
         self.steps = steps
+        self.use_adam = use_adam
         self.logger = logger
 
         self.content_image, self.style_image, self.generated_image = self._load_images(
@@ -85,7 +87,11 @@ class NeuralStyleTransfer(object):
         _, content_features = self.vgg_features(self.content_image)
         style_features, _ = self.vgg_features(self.style_image)
 
-        optimizer = optim.LBFGS([self.generated_image])
+        optimizer = (
+            optim.Adam([self.generated_image])
+            if self.use_adam
+            else optim.LBFGS([self.generated_image])
+        )
 
         for step in tqdm(range(self.steps), unit="step"):
 
@@ -114,11 +120,11 @@ class NeuralStyleTransfer(object):
 
         style_loss = self.compute_style_loss(generated_style, style_features)
         content_loss = self.compute_content_loss(generated_content, content_features)
-        if self.tv_strength == 0:
-            total_variation = 0
-        else:
-            total_variation = self.compute_total_variation(self.generated_image)
-
+        total_variation = (
+            0
+            if self.tv_strength == 0
+            else self.compute_total_variation(self.generated_image)
+        )
         total_loss = (
             (self.alpha * content_loss)
             + style_loss
@@ -161,7 +167,13 @@ if __name__ == "__main__":
         help="To resize the content and style image before proceeding",
     )
 
-    # VGG (feature maps related) arguments
+    # Suggested improvements for loss functions and gram matrix computation
+    parser.add_argument(
+        "--activation_shift",
+        action="store_true",
+        default=False,
+        help="Shift the activations when computing the gram matrix",
+    )
     parser.add_argument(
         "--vgg_config",
         type=str,
@@ -170,31 +182,17 @@ if __name__ == "__main__":
         help="Describes the set of layers to be used for extracting style/content features",
     )
     parser.add_argument(
-        "--use_max_pool",
+        "--chained_gram",
         action="store_true",
         default=False,
-        help="Use max-pooling instead of average-pooling in the VGG network",
+        help="Compute gram matrices between adjacent layers (chaining)",
     )
-
-    # Suggested improvements for loss functions and gram matrix computation
     parser.add_argument(
         "--layer_weighing",
         type=str,
         default="default",
         choices=losses.STYLE_WEIGHING_SCHEMES,
         help="Weight applied to the gram matrices obtained from different style layers",
-    )
-    parser.add_argument(
-        "--activation_shift",
-        action="store_true",
-        default=False,
-        help="Shift the activations when computing the gram matrix",
-    )
-    parser.add_argument(
-        "--chained_gram",
-        action="store_true",
-        default=False,
-        help="Compute gram matrices between adjacent layers (chaining)",
     )
     parser.add_argument(
         "--tv_strength",
@@ -215,7 +213,19 @@ if __name__ == "__main__":
         help="Initial image to be stylized",
     )
     parser.add_argument(
+        "--use_max_pool",
+        action="store_true",
+        default=False,
+        help="Use max-pooling instead of average-pooling in the VGG network",
+    )
+    parser.add_argument(
         "--steps", type=int, default=500, help="Number of L-BFGS iterations"
+    )
+    parser.add_argument(
+        "--use_adam",
+        action="store_true",
+        default=False,
+        help="Use the Adam optimizer instead of L-BFGS",
     )
 
     args = parser.parse_args()
