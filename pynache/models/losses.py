@@ -9,7 +9,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-STYLE_WEIGHING_SCHEMES = ["default", "improved"]
+STYLE_WEIGHING_SCHEMES = ["default", "improved", "recommended"]
+_NUM_FILTERS = {
+    5: [64, 128, 256, 512, 512],
+    16: [64, 64, 128, 128, 256, 256, 256, 256, 512, 512, 512, 512, 512, 512, 512, 512],
+}
 
 
 def gram_matrix(arr1: torch.Tensor, arr2: torch.Tensor) -> torch.Tensor:
@@ -25,7 +29,9 @@ class StyleLoss(nn.Module):
     def __init__(self, num_layers, weights="default", activation_shift=False):
         super(StyleLoss, self).__init__()
         self.activation_shift = int(activation_shift)  # Either 0 or 1
-        self.weights = _compute_weights(num_layers=num_layers, weight_type=weights)
+        self.weights = _compute_weights(
+            num_layers=num_layers, weight_type=weights, chained_gram=False
+        )
 
     def forward(self, inputs: List[torch.Tensor], targets: List[torch.Tensor]):
         assert len(inputs) == len(targets)
@@ -54,8 +60,8 @@ class StyleLossChained(nn.Module):
         self.num_layers = num_layers
         self.activation_shift = int(activation_shift)  # Either 0 or 1
         self.weights = _compute_weights(
-            num_layers=num_layers - 1, weight_type=weights
-        )  # Because of chaining, we have (num_layers - 1) gram matrices
+            num_layers=num_layers, weight_type=weights, chained_gram=True
+        )
 
     def forward(self, inputs: List[torch.Tensor], targets: List[torch.Tensor]):
         assert len(inputs) == len(targets)
@@ -124,13 +130,22 @@ def _compute_chained_gram(arr1: torch.Tensor, arr2: torch.Tensor, shift: int):
     return gram_matrix(arr1, arr2) / denom
 
 
-def _compute_weights(num_layers, weight_type="default"):
+def _compute_weights(num_layers, weight_type="default", chained_gram=False):
     assert weight_type in STYLE_WEIGHING_SCHEMES, "Invalid weighing scheme passed"
-    weights = (
-        [1.0 for _ in range(num_layers)]
-        if weight_type == "default"
-        else [2 ** (num_layers - (i + 1)) for i in range(num_layers)]
-    )
 
-    sum_ = sum(weights)
-    return [w / sum_ for w in weights]
+    if weight_type in ["default", "improved"]:
+        num_layers = (num_layers - 1) if chained_gram else num_layers
+        weights = (
+            [1.0 for _ in range(num_layers)]
+            if weight_type == "default"
+            else [2 ** (num_layers - (i + 1)) for i in range(num_layers)]
+        )
+    else:
+        filters = (
+            zip(_NUM_FILTERS[num_layers], _NUM_FILTERS[num_layers][1:])
+            if chained_gram
+            else zip(_NUM_FILTERS[num_layers], _NUM_FILTERS[num_layers])
+        )
+        weights = [1.0 / (f1 * f2) for (f1, f2) in filters]
+
+    return [w / sum(weights) for w in weights]
