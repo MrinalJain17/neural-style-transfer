@@ -3,7 +3,7 @@
 Note that the loss functions do not normalize with respect to the batch size.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -12,16 +12,15 @@ import torch.nn.functional as F
 STYLE_WEIGHING_SCHEMES = ["default", "improved"]
 
 
-def gram_matrix(feature_maps: torch.Tensor, shift: int = 0) -> torch.Tensor:
-    gram = torch.einsum("bxhw,byhw->bxy", feature_maps - shift, feature_maps - shift)
-    return gram  # Shape: (B, C, C)
+def gram_matrix(
+    feature_maps: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]], shift: int = 0
+) -> torch.Tensor:
+    if not isinstance(feature_maps, tuple):
+        feature_maps = (feature_maps, feature_maps)
 
-
-def gram_chain(feature_maps: Tuple[torch.Tensor, torch.Tensor], shift: int = 0):
-    gram = torch.einsum(
+    return torch.einsum(
         "bxhw,byhw->bxy", feature_maps[0] - shift, feature_maps[1] - shift
-    )
-    return gram  # Shape: (B, C1, C2)
+    )  # Shape: (B, C, C) or (B, C1, C2)
 
 
 def _compute_weights(num_layers, weight_type="default"):
@@ -51,8 +50,8 @@ class StyleLoss(nn.Module):
             _, C, H, W = input.size()
             denom = 2 * C * H * W
             G, A = (
-                gram_matrix(input, self.activation_shift) / denom,
-                gram_matrix(target, self.activation_shift) / denom,
+                gram_matrix(input, shift=self.activation_shift) / denom,
+                gram_matrix(target, shift=self.activation_shift) / denom,
             )
             loss_list.append(weight * F.mse_loss(G, A, reduction="sum"))
 
@@ -81,7 +80,7 @@ class StyleLossChained(nn.Module):
             denom = 2 * ((C1 * C2) ** 0.5) * H * W
 
             arr2 = F.interpolate(arr2, size=(H, W))
-            return gram_chain((arr1, arr2), shift=self.activation_shift) / denom
+            return gram_matrix((arr1, arr2), shift=self.activation_shift) / denom
 
         for idx in range(self.num_layers - 1):
             input_grams.append(_compute_gram(inputs[idx], inputs[idx + 1]))

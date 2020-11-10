@@ -67,14 +67,6 @@ class VGGFeatures(nn.Module):
 
         self._freeze()
 
-    def _load_vgg(self, use_normalized_vgg):
-        model = models.vgg19(pretrained=True)
-        if use_normalized_vgg:
-            model.load_state_dict(
-                torch.hub.load_state_dict_from_url(VGG_NORMALIZED_STATE_DICT)
-            )
-        return model.features
-
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         style_features = []
         content_features = []
@@ -91,6 +83,14 @@ class VGGFeatures(nn.Module):
                 content_features.append(x)
 
         return style_features, content_features
+
+    def _load_vgg(self, use_normalized_vgg):
+        model = models.vgg19(pretrained=(not use_normalized_vgg))
+        if use_normalized_vgg:
+            model.load_state_dict(
+                torch.hub.load_state_dict_from_url(VGG_NORMALIZED_STATE_DICT)
+            )
+        return model.features
 
     def _freeze(self) -> None:
         """Freezes the model parameters and sets it to evaluation mode"""

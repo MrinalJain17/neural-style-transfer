@@ -23,24 +23,33 @@ class NeuralStyleTransfer(object):
         chained_gram: bool = False,
         layer_weighing: str = "default",
         tv_strength: float = 0,
-        alpha: float = 1e-3,
-        init_image: str = "noise",
+        alpha: float = 1e-4,
+        init_image: str = "content",
         use_max_pool: bool = False,
-        steps: int = 500,
-        use_adam: bool = False,
+        steps: int = None,
+        use_lbfgs: bool = False,
         logger: WandbLogger = None,
     ):
         self.device = DEVICE
         self.tv_strength = tv_strength
         self.alpha = alpha
         self.steps = steps
-        self.use_adam = use_adam
+        self.use_lbfgs = use_lbfgs
         self.logger = logger
+
+        if self.steps is None:
+            self.steps = 500 if self.use_lbfgs else 10000
+            self.logger.config.update({"steps": self.steps})
+
+        self._log_every_n_steps = self.steps // 20
+        self._current_step = None
 
         self.content_image, self.style_image, self.generated_image = self._load_images(
             content, style, init_image, resize
         )
-        self.vgg_features = self._load_model(vgg_config, use_max_pool)
+        self.vgg_features = VGGFeatures(
+            config=vgg_config, use_avg_pool=(not use_max_pool)
+        ).to(self.device)
 
         _loss_fx = losses.StyleLossChained if chained_gram else losses.StyleLoss
         self.compute_style_loss = _loss_fx(
@@ -54,14 +63,8 @@ class NeuralStyleTransfer(object):
     def _load_images(self, content, style, init_image, resize):
         assert init_image in ["noise", "content"], "Invalid initial image passed"
 
-        content_image = (
-            load_content(content, resize, normalize=True)
-            .unsqueeze(dim=0)
-            .to(self.device)
-        )
-        style_image = (
-            load_style(style, resize, normalize=True).unsqueeze(dim=0).to(self.device)
-        )
+        content_image = load_content(content, resize).unsqueeze(dim=0).to(self.device)
+        style_image = load_style(style, resize).unsqueeze(dim=0).to(self.device)
 
         generated_image = (
             (torch.rand_like(content_image, device=self.device) - 0.5) / 0.5
@@ -71,51 +74,32 @@ class NeuralStyleTransfer(object):
 
         return content_image, style_image, generated_image
 
-    def _load_model(self, vgg_config, use_max_pool):
-        return VGGFeatures(
-            config=vgg_config, use_avg_pool=(not use_max_pool), use_normalized_vgg=True,
-        ).to(self.device)
-
     def train(self):
-        self.logger._log_image(
-            [self.content_image, self.style_image],
-            "inputs",
-            captions=["Content image", "Style image"],
-            step=0,
-        )
+        self.logger.log_inputs(self.content_image, self.style_image)
 
         _, content_features = self.vgg_features(self.content_image)
         style_features, _ = self.vgg_features(self.style_image)
 
         optimizer = (
-            optim.Adam([self.generated_image])
-            if self.use_adam
-            else optim.LBFGS([self.generated_image])
+            optim.LBFGS([self.generated_image])
+            if self.use_lbfgs
+            else optim.Adam([self.generated_image])
         )
 
+        def closure():
+            optimizer.zero_grad()
+            loss = self._train_step(style_features, content_features)
+            loss.backward()
+            return loss
+
         for step in tqdm(range(self.steps), unit="step"):
-
-            def closure():
-                optimizer.zero_grad()
-                loss = self._train_step(
-                    style_features=style_features,
-                    content_features=content_features,
-                    step=step,
-                )
-                loss.backward()
-                return loss
-
+            self._current_step = step
             optimizer.step(closure)
 
-            if (step == 0) or ((step + 1) % 20 == 0):
-                self.logger._log_image(
-                    [self.generated_image],
-                    "outputs",
-                    captions=[f"Iteration {step + 1}"],
-                    step=step,
-                )
+            if (step == 0) or ((step + 1) % self._log_every_n_steps == 0):
+                self.logger.log_outputs(self.generated_image, step=step)
 
-    def _train_step(self, style_features, content_features, step):
+    def _train_step(self, style_features, content_features):
         generated_style, generated_content = self.vgg_features(self.generated_image)
 
         style_loss = self.compute_style_loss(generated_style, style_features)
@@ -125,13 +109,14 @@ class NeuralStyleTransfer(object):
             if self.tv_strength == 0
             else self.compute_total_variation(self.generated_image)
         )
+
         total_loss = (
             (self.alpha * content_loss)
             + style_loss
             + (self.tv_strength * total_variation)
         )
 
-        self.logger._log(style_loss, content_loss, total_loss, step)
+        self.logger.log_loss(style_loss, content_loss, total_loss, self._current_step)
         return total_loss
 
 
@@ -203,12 +188,12 @@ if __name__ == "__main__":
 
     # Training/optimization arguments
     parser.add_argument(
-        "--alpha", type=float, default=1e-3, help="The content-style ratio"
+        "--alpha", type=float, default=1e-4, help="The content-style ratio"
     )
     parser.add_argument(
         "--init_image",
         type=str,
-        default="noise",
+        default="content",
         choices=["noise", "content"],
         help="Initial image to be stylized",
     )
@@ -219,13 +204,13 @@ if __name__ == "__main__":
         help="Use max-pooling instead of average-pooling in the VGG network",
     )
     parser.add_argument(
-        "--steps", type=int, default=500, help="Number of L-BFGS iterations"
+        "--steps", type=int, default=None, help="Number of iterations to run"
     )
     parser.add_argument(
-        "--use_adam",
+        "--use_lbfgs",
         action="store_true",
         default=False,
-        help="Use the Adam optimizer instead of L-BFGS",
+        help="Use the L-BFGS optimizer instead of Adam",
     )
 
     args = parser.parse_args()

@@ -6,7 +6,7 @@ from torchvision import transforms
 
 
 def get_transform(
-    resize: List[int] = [512, 512], normalize: bool = False
+    resize: List[int] = [512, 512], normalize: bool = True
 ) -> transforms.Compose:
     transform = transforms.Compose([transforms.Resize(resize)])
 

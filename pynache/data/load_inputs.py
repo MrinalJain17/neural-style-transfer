@@ -21,7 +21,7 @@ def _load(path: str, resize: List[int], normalize: bool) -> torch.Tensor:
 
 
 def load_style(
-    name: str, resize: List[int] = [512, 512], normalize: bool = False
+    name: str, resize: List[int] = [512, 512], normalize: bool = True
 ) -> torch.Tensor:
     path = list(STYLE_ROOT.glob(f"{name}.*"))
     assert len(path) == 1, f"Style image '{name}' does not exist"
@@ -31,7 +31,7 @@ def load_style(
 
 
 def load_content(
-    name: str, resize: List[int] = [512, 512], normalize: bool = False
+    name: str, resize: List[int] = [512, 512], normalize: bool = True
 ) -> torch.Tensor:
     path = list(CONTENT_ROOT.glob(f"{name}.*"))
     assert len(path) == 1, f"Content image '{name}' does not exist"
