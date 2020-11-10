@@ -23,6 +23,17 @@ _sample = torch.rand((1, 128, 256, 256))
 gram_matrix = torch.jit.trace(gram_matrix, (_sample, _sample.clone()))
 
 
+@torch.jit.script
+def _compute_chained_gram(arr1: torch.Tensor, arr2: torch.Tensor, shift: int):
+    _, C1, H, W = arr1.size()
+    _, C2, _, _ = arr2.size()
+    denom = 2 * ((C1 * C2) ** 0.5) * H * W
+
+    arr1 = arr1 - shift
+    arr2 = F.interpolate(arr2, size=(H, W)) - shift
+    return gram_matrix(arr1, arr2) / denom
+
+
 def _compute_weights(num_layers, weight_type="default"):
     assert weight_type in STYLE_WEIGHING_SCHEMES, "Invalid weighing scheme passed"
     weights = (
@@ -78,18 +89,17 @@ class StyleLossChained(nn.Module):
         input_grams = []
         target_grams = []
 
-        def _compute_gram(arr1, arr2):
-            _, C1, H, W = arr1.size()
-            _, C2, _, _ = arr2.size()
-            denom = 2 * ((C1 * C2) ** 0.5) * H * W
-
-            arr1 = arr1 - self.activation_shift
-            arr2 = F.interpolate(arr2, size=(H, W)) - self.activation_shift
-            return gram_matrix(arr1, arr2) / denom
-
         for idx in range(self.num_layers - 1):
-            input_grams.append(_compute_gram(inputs[idx], inputs[idx + 1]))
-            target_grams.append(_compute_gram(targets[idx], targets[idx + 1]))
+            input_grams.append(
+                _compute_chained_gram(
+                    inputs[idx], inputs[idx + 1], self.activation_shift
+                )
+            )
+            target_grams.append(
+                _compute_chained_gram(
+                    targets[idx], targets[idx + 1], self.activation_shift
+                )
+            )
 
         loss_list = []
         for (G, A, weight) in zip(input_grams, target_grams, self.weights):
