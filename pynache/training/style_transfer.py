@@ -24,7 +24,7 @@ class NeuralStyleTransfer(object):
         chained_gram: bool = False,
         layer_weighing: str = "default",
         tv_strength: float = 0,
-        alpha: float = 1e-4,
+        alpha: float = 1e-6,
         init_image: str = "content",
         use_max_pool: bool = False,
         steps: int = None,
@@ -198,7 +198,7 @@ if __name__ == "__main__":
 
     # Training/optimization arguments
     parser.add_argument(
-        "--alpha", type=float, default=1e-8, help="The content-style ratio"
+        "--alpha", type=float, default=1e-6, help="The content-style ratio"
     )
     parser.add_argument(
         "--init_image",
