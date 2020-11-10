@@ -3,7 +3,7 @@
 Note that the loss functions do not normalize with respect to the batch size.
 """
 
-from typing import List, Tuple, Union
+from typing import List
 
 import torch
 import torch.nn as nn
@@ -13,14 +13,14 @@ STYLE_WEIGHING_SCHEMES = ["default", "improved"]
 
 
 def gram_matrix(
-    feature_maps: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]], shift: int = 0
+    feature_maps_1: torch.Tensor, feature_maps_2: torch.Tensor
 ) -> torch.Tensor:
-    if not isinstance(feature_maps, tuple):
-        feature_maps = (feature_maps, feature_maps)
+    # Shape: (B, C, C) or (B, C1, C2)
+    return torch.einsum("bxhw,byhw->bxy", feature_maps_1, feature_maps_2)
 
-    return torch.einsum(
-        "bxhw,byhw->bxy", feature_maps[0] - shift, feature_maps[1] - shift
-    )  # Shape: (B, C, C) or (B, C1, C2)
+
+_sample = torch.rand((1, 128, 256, 256))
+gram_matrix = torch.jit.trace(gram_matrix, (_sample, _sample.clone()))
 
 
 def _compute_weights(num_layers, weight_type="default"):
@@ -49,13 +49,17 @@ class StyleLoss(nn.Module):
         for (input, target, weight) in zip(inputs, targets, self.weights):
             _, C, H, W = input.size()
             denom = 2 * C * H * W
+            input, target = (
+                input - self.activation_shift,
+                target - self.activation_shift,
+            )
             G, A = (
-                gram_matrix(input, shift=self.activation_shift) / denom,
-                gram_matrix(target, shift=self.activation_shift) / denom,
+                gram_matrix(input, input) / denom,
+                gram_matrix(target, target) / denom,
             )
             loss_list.append(weight * F.mse_loss(G, A, reduction="sum"))
 
-        return sum(loss_list)
+        return torch.stack(loss_list).sum()
 
 
 class StyleLossChained(nn.Module):
@@ -79,8 +83,9 @@ class StyleLossChained(nn.Module):
             _, C2, _, _ = arr2.size()
             denom = 2 * ((C1 * C2) ** 0.5) * H * W
 
-            arr2 = F.interpolate(arr2, size=(H, W))
-            return gram_matrix((arr1, arr2), shift=self.activation_shift) / denom
+            arr1 = arr1 - self.activation_shift
+            arr2 = F.interpolate(arr2, size=(H, W)) - self.activation_shift
+            return gram_matrix(arr1, arr2) / denom
 
         for idx in range(self.num_layers - 1):
             input_grams.append(_compute_gram(inputs[idx], inputs[idx + 1]))
@@ -90,7 +95,7 @@ class StyleLossChained(nn.Module):
         for (G, A, weight) in zip(input_grams, target_grams, self.weights):
             loss_list.append(weight * F.mse_loss(G, A, reduction="sum"))
 
-        return sum(loss_list)
+        return torch.stack(loss_list).sum()
 
 
 class ContentLoss(nn.Module):

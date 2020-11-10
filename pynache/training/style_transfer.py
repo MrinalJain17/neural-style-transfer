@@ -53,10 +53,12 @@ class NeuralStyleTransfer(object):
         ).to(self.device)
 
         _loss_fx = losses.StyleLossChained if chained_gram else losses.StyleLoss
-        self.compute_style_loss = _loss_fx(
-            num_layers=len(self.vgg_features.style_layers),
-            weights=layer_weighing,
-            activation_shift=activation_shift,
+        self.compute_style_loss = torch.jit.script(
+            _loss_fx(
+                num_layers=len(self.vgg_features.style_layers),
+                weights=layer_weighing,
+                activation_shift=activation_shift,
+            )
         )
         self.compute_content_loss = losses.ContentLoss()
         self.compute_total_variation = losses.TotalVariation()
