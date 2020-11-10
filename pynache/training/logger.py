@@ -12,7 +12,9 @@ Path(ARTIFACTS_PATH).mkdir(exist_ok=True)
 
 class WandbLogger(object):
     def __init__(self, name, args, project="neural-style-transfer"):
-        wandb.init(name=name, project=project, dir=ARTIFACTS_PATH)
+        wandb.init(
+            name=name, project=project, dir=ARTIFACTS_PATH, allow_val_change=True
+        )
         wandb.config.update(args)
 
     @property
