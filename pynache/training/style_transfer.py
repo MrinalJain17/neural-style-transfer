@@ -9,6 +9,7 @@ from pynache.models.vgg import FEATURES_CONFIG
 from pynache.training.logger import WandbLogger
 from tqdm import tqdm
 
+SEED = 42999
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -67,16 +68,14 @@ class NeuralStyleTransfer(object):
         style_image = load_style(style, resize).unsqueeze(dim=0).to(self.device)
 
         generated_image = (
-            (torch.rand_like(content_image, device=self.device) - 0.5) / 0.5
-            if init_image == "noise"
-            else content_image.clone()
+            content_image.clone()
+            if init_image == "content"
+            else (torch.rand_like(content_image, device=self.device) - 0.5) / 0.5
         ).requires_grad_(True)
 
         return content_image, style_image, generated_image
 
     def train(self):
-        self.logger.log_inputs(self.content_image, self.style_image)
-
         _, content_features = self.vgg_features(self.content_image)
         style_features, _ = self.vgg_features(self.style_image)
 
@@ -97,7 +96,14 @@ class NeuralStyleTransfer(object):
             optimizer.step(closure)
 
             if (step == 0) or ((step + 1) % self._log_every_n_steps == 0):
-                self.logger.log_outputs(self.generated_image, step=step)
+                self.logger.log_samples(self.generated_image, step=step)
+
+        self.logger.log_results(
+            self.content_image,
+            self.style_image,
+            self.generated_image,
+            self._current_step,
+        )
 
     def _train_step(self, style_features, content_features):
         generated_style, generated_content = self.vgg_features(self.generated_image)
@@ -133,6 +139,8 @@ def main(args):
     name = "Improved Style Transfer" if is_improved else "Original Style Transfer"
     logger = WandbLogger(name=name, args=args)
     args_dict["logger"] = logger
+
+    torch.manual_seed(SEED)
 
     model = NeuralStyleTransfer(**args_dict)
     model.train()
@@ -188,7 +196,7 @@ if __name__ == "__main__":
 
     # Training/optimization arguments
     parser.add_argument(
-        "--alpha", type=float, default=1e-4, help="The content-style ratio"
+        "--alpha", type=float, default=1e-8, help="The content-style ratio"
     )
     parser.add_argument(
         "--init_image",

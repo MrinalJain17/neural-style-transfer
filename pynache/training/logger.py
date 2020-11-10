@@ -27,32 +27,36 @@ class WandbLogger(object):
         }
         wandb.log(_logs, step=step)
 
-    def log_inputs(self, content_image, style_image, step=0):
+    def log_results(self, content_image, style_image, generated_image, step):
         content_image = self._prepare_image(content_image)
         style_image = self._prepare_image(style_image)
+        generated_image = self._prepare_image(generated_image)
 
         self._log_image(
-            images=[content_image, style_image],
-            section="inputs",
-            captions=["Content image", "Style image"],
+            images=[content_image, style_image, generated_image],
+            section="results",
+            captions=["Content image", "Style image", "Generated Image"],
             step=step,
         )
 
-    def log_outputs(self, generated_image, step):
-        with torch.no_grad():
-            generated_image = self._prepare_image(generated_image)
-            self._log_image(
-                images=[generated_image],
-                section="outputs",
-                captions=[f"Iteration {step + 1}"],
-                step=step,
-            )
+    def log_samples(self, generated_image, step):
+        generated_image = self._prepare_image(generated_image)
+        self._log_image(
+            images=[generated_image],
+            section="samples",
+            captions=[f"Iteration {step + 1}"],
+            step=step,
+        )
 
     def _prepare_image(self, image: torch.Tensor):
         assert image.ndim == 4, "Expected input of shape (B, C, H, W)"
-        return np.transpose(denormalize(image[0]).detach().cpu().numpy(), (1, 2, 0))
+        with torch.no_grad():
+            image = np.transpose(
+                denormalize(image[0]).detach().cpu().numpy(), (1, 2, 0)
+            )
+        return image
 
-    def _log_image(self, images, section="outputs", captions=None, step=None):
+    def _log_image(self, images, section="samples", captions=None, step=None):
         wandb.log(
             {
                 section: [
