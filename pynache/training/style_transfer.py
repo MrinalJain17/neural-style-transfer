@@ -39,7 +39,7 @@ class NeuralStyleTransfer(object):
 
         if self.steps is None:
             self.steps = 500 if self.use_lbfgs else 10000
-            self.logger.config.update({"steps": self.steps})
+            self.logger.config.update({"steps": self.steps}, allow_val_change=True)
 
         self._log_every_n_steps = self.steps // 20
         self._current_step = None
