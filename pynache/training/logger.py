@@ -1,10 +1,11 @@
 from pathlib import Path
 
-import numpy as np
 import torch
 import wandb
 from pynache.data.transforms import denormalize
 from pynache.paths import REPOSITORY_ROOT
+from pynache.training.utils import _add_color
+from pynache.utils import to_numpy
 
 ARTIFACTS_PATH = (Path(REPOSITORY_ROOT) / "wandb_artifacts").as_posix()
 Path(ARTIFACTS_PATH).mkdir(exist_ok=True)
@@ -27,7 +28,13 @@ class WandbLogger(object):
         }
         wandb.log(_logs, step=step)
 
-    def log_results(self, content_image, style_image, generated_image, step):
+    def log_results(
+        self, content_image, style_image, generated_image, step, add_color=False,
+    ):
+        if add_color:
+            _generated, _content = generated_image.clone(), content_image.clone()
+            generated_image = _add_color(_content, _generated)
+
         content_image = self._prepare_image(content_image)
         style_image = self._prepare_image(style_image)
         generated_image = self._prepare_image(generated_image)
@@ -49,11 +56,9 @@ class WandbLogger(object):
         )
 
     def _prepare_image(self, image: torch.Tensor):
-        assert image.ndim == 4, "Expected input of shape (B, C, H, W)"
+        assert image.ndim == 4, "Expected input of shape (1, C, H, W)"
         with torch.no_grad():
-            image = np.transpose(
-                denormalize(image[0]).detach().cpu().numpy(), (1, 2, 0)
-            )
+            image = to_numpy(denormalize(image[0]).detach().cpu())
         return image
 
     def _log_image(self, images, section="samples", captions=None, step=None):

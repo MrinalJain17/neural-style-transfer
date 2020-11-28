@@ -7,6 +7,8 @@ from pynache.data import load_content, load_style
 from pynache.models import VGGFeatures, losses
 from pynache.models.vgg import FEATURES_CONFIG
 from pynache.training.logger import WandbLogger
+from pynache.utils import to_numpy, to_tensor
+from skimage.exposure import match_histograms
 from tqdm import tqdm
 
 SEED = 42999
@@ -19,6 +21,7 @@ class NeuralStyleTransfer(object):
         content: str,
         style: str,
         resize: List[int] = [512, 512],
+        preserve_color: bool = False,
         activation_shift: bool = False,
         vgg_config: str = "default",
         chained_gram: bool = False,
@@ -32,6 +35,7 @@ class NeuralStyleTransfer(object):
         logger: WandbLogger = None,
     ):
         self.device = DEVICE
+        self.preserve_color = preserve_color
         self.tv_strength = tv_strength
         self.alpha = alpha
         self.steps = steps
@@ -66,14 +70,35 @@ class NeuralStyleTransfer(object):
     def _load_images(self, content, style, init_image, resize):
         assert init_image in ["noise", "content"], "Invalid initial image passed"
 
-        content_image = load_content(content, resize).unsqueeze(dim=0).to(self.device)
-        style_image = load_style(style, resize).unsqueeze(dim=0).to(self.device)
+        gray = True if self.preserve_color else False
+        content_image, style_image = (
+            to_numpy(load_content(content, resize, gray=gray)),
+            to_numpy(load_style(style, resize, gray=gray)),
+        )
+
+        if self.preserve_color:
+            # Histogram matching as described in https://arxiv.org/abs/1606.05897
+            # for better color preservation.
+            style_image = match_histograms(
+                style_image, content_image, multichannel=True
+            )
+
+        content_image, style_image = (
+            to_tensor(content_image).unsqueeze(dim=0).to(self.device),
+            to_tensor(style_image).unsqueeze(dim=0).to(self.device),
+        )
 
         generated_image = (
             content_image.clone()
             if init_image == "content"
             else (torch.rand_like(content_image, device=self.device) - 0.5) / 0.5
         ).requires_grad_(True)
+
+        # Used for logging, in case any modifications are made to style/content image
+        self.original_images = {
+            "content": load_content(content, resize).unsqueeze(dim=0).to(self.device),
+            "style": load_style(style, resize).unsqueeze(dim=0).to(self.device),
+        }
 
         return content_image, style_image, generated_image
 
@@ -100,11 +125,20 @@ class NeuralStyleTransfer(object):
             if (step == 0) or ((step + 1) % self._log_every_n_steps == 0):
                 self.logger.log_samples(self.generated_image, step=step)
 
+        # Getting back the original content/style images for logging.
+        # This is required when preserving color, since only the luminance channel
+        # is used in the entire style transfer process.
+        self.content_image, self.style_image = (
+            self.original_images["content"],
+            self.original_images["style"],
+        )
+
         self.logger.log_results(
             self.content_image,
             self.style_image,
             self.generated_image,
             self._current_step,
+            self.preserve_color,
         )
 
     def _train_step(self, style_features, content_features):
@@ -160,6 +194,12 @@ if __name__ == "__main__":
         nargs=2,
         default=[512, 512],
         help="To resize the content and style image before proceeding",
+    )
+    parser.add_argument(
+        "--preserve_color",
+        action="store_true",
+        default=False,
+        help="To preserve the color of content image",
     )
 
     # Suggested improvements for loss functions and gram matrix computation
