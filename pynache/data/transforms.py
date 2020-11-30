@@ -6,7 +6,7 @@ from torchvision import transforms
 
 
 def get_transform(
-    resize: List[int] = [512, 512], normalize: bool = True
+    resize: List[int] = [512, 512], normalize: bool = True, gray: bool = False
 ) -> transforms.Compose:
     transform = transforms.Compose([transforms.Resize(resize)])
 
@@ -17,6 +17,9 @@ def get_transform(
                 std=np.array([0.229, 0.224, 0.225]),
             )
         )
+
+    if gray:
+        transform.transforms.append(transforms.Grayscale(3))
 
     return transform
 

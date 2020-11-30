@@ -28,10 +28,10 @@ Execute the following command from the root of the repository to install the pro
 
 ### Papers
 
-1. [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576)
-2. [Improving the Neural Algorithm of Artistic Style](https://arxiv.org/abs/1605.04603)
-3. [Preserving Color in Neural Artistic Style Transfer](https://arxiv.org/abs/1606.05897)
-4. [Perceptual Losses for Real-Time Style Transfer and Super-Resolution](https://arxiv.org/abs/1603.08155)
+1. [x] [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576)
+2. [x] [Improving the Neural Algorithm of Artistic Style](https://arxiv.org/abs/1605.04603)
+3. [x] [Preserving Color in Neural Artistic Style Transfer](https://arxiv.org/abs/1606.05897)
+4. [ ] [Perceptual Losses for Real-Time Style Transfer and Super-Resolution](https://arxiv.org/abs/1603.08155)
 
 ### Code Repositories
 

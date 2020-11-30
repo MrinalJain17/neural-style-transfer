@@ -10,31 +10,34 @@ STYLE_ROOT: Path = Path(DEFAULT_IMAGES) / "inputs" / "style"
 CONTENT_ROOT: Path = Path(DEFAULT_IMAGES) / "inputs" / "content"
 
 
-def _load(path: str, resize: List[int], normalize: bool) -> torch.Tensor:
+def _load(path: str, resize: List[int], normalize: bool, gray: bool) -> torch.Tensor:
     image = read_image(path).float().div(255)
+    transform = get_transform(resize=resize, normalize=normalize, gray=gray)
 
-    if resize is None:
-        return image
-
-    transform = get_transform(resize=resize, normalize=normalize)
     return transform(image)
 
 
 def load_style(
-    name: str, resize: List[int] = [512, 512], normalize: bool = True
+    name: str,
+    resize: List[int] = [512, 512],
+    normalize: bool = True,
+    gray: bool = False,
 ) -> torch.Tensor:
     path = list(STYLE_ROOT.glob(f"{name}.*"))
     assert len(path) == 1, f"Style image '{name}' does not exist"
     path = path[0].as_posix()
 
-    return _load(path, resize=resize, normalize=normalize)
+    return _load(path, resize=resize, normalize=normalize, gray=gray)
 
 
 def load_content(
-    name: str, resize: List[int] = [512, 512], normalize: bool = True
+    name: str,
+    resize: List[int] = [512, 512],
+    normalize: bool = True,
+    gray: bool = False,
 ) -> torch.Tensor:
     path = list(CONTENT_ROOT.glob(f"{name}.*"))
     assert len(path) == 1, f"Content image '{name}' does not exist"
     path = path[0].as_posix()
 
-    return _load(path, resize=resize, normalize=normalize)
+    return _load(path, resize=resize, normalize=normalize, gray=gray)
