@@ -35,10 +35,6 @@ class WandbLogger(object):
             _generated, _content = generated_image.clone(), content_image.clone()
             generated_image = _add_color(_content, _generated)
 
-        content_image = self._prepare_image(content_image)
-        style_image = self._prepare_image(style_image)
-        generated_image = self._prepare_image(generated_image)
-
         self._log_image(
             images=[content_image, style_image, generated_image],
             section="results",
@@ -47,7 +43,6 @@ class WandbLogger(object):
         )
 
     def log_samples(self, generated_image, step):
-        generated_image = self._prepare_image(generated_image)
         self._log_image(
             images=[generated_image],
             section="samples",
@@ -65,7 +60,7 @@ class WandbLogger(object):
         wandb.log(
             {
                 section: [
-                    wandb.Image(image, caption=caption)
+                    wandb.Image(self._prepare_image(image), caption=caption)
                     for (image, caption) in zip(images, captions)
                 ]
             },

@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from pynache.data.load_inputs import _load
+from pynache.data.transforms import get_transform
 from pynache.paths import COCO_DIR, COCO_ROOT
 from torch.utils.data import Dataset
+from torchvision.io import read_image
 
 
 class COCODataset(Dataset):
@@ -18,9 +19,12 @@ class COCODataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, index: int):
-        return _load(
-            self.image_paths[index], resize=[256, 256], normalize=True, gray=False
-        )
+        image = read_image(self.image_paths[index]).float().div(255)
+        if image.shape[0] == 1:  # Some images in COCO are gray scale
+            image = image.repeat(3, 1, 1)
+
+        transform = get_transform(resize=[256, 256], normalize=True, gray=False)
+        return transform(image)
 
 
 def get_coco():
