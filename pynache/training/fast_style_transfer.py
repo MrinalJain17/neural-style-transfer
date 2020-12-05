@@ -2,15 +2,19 @@ from argparse import ArgumentParser
 from multiprocessing import cpu_count
 
 import pytorch_lightning as pl
+import torch
 import torch.optim as optim
-from pynache.data import load_style
+from pynache.data import load_content, load_style
 from pynache.data.datasets import get_coco
+from pynache.data.transforms import denormalize
 from pynache.models import TransformationNetwork, VGGFeatures, losses
-from pynache.training.callbacks import ExamplesLoggingCallback
 from pynache.training.logger import ARTIFACTS_PATH
+from pynache.utils import to_numpy
 from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
+from wandb import Image
 
 SEED = 42999
 
@@ -34,7 +38,7 @@ class FastStyleTransfer(pl.LightningModule):
 
         # Loss functions and networks
         self.transformation_network = TransformationNetwork()
-        self.vgg_features = VGGFeatures(config="recommended")
+        self.vgg_features = VGGFeatures(config="default")
         self.compute_style_loss = losses.StyleLossChained(
             num_layers=len(self.vgg_features.style_layers),
             weights="recommended",
@@ -47,9 +51,8 @@ class FastStyleTransfer(pl.LightningModule):
         return self.transformation_network(x)
 
     def on_fit_start(self):
+        """Pre-computing feature maps of style image"""
         super().on_fit_start()
-
-        # Pre-computing style image feature maps
         self.style_features, _ = self.vgg_features(self.style_image.to(self.device))
 
     def training_step(self, batch, batch_idx):
@@ -120,6 +123,46 @@ class FastStyleTransfer(pl.LightningModule):
         )
 
         return parser
+
+
+class ExamplesLoggingCallback(Callback):
+    """Callback to upload sample predictions to W&B."""
+
+    def __init__(self, content="kinkaku_ji", seed=None) -> None:
+        super().__init__()
+        self.content_image = load_content(content, resize=[256, 256]).unsqueeze(0)
+
+    def on_fit_start(self, trainer, pl_module):
+        self.style_image = pl_module.style_image[:1, :, :, :]  # Shape: (1, C, H, W)
+        self.content_image = self.content_image.to(pl_module.device)
+
+    def on_train_epoch_end(self, trainer, pl_module, outputs):
+        pl_module.eval()
+        with torch.no_grad():
+            generated_image = pl_module.forward(self.content_image)
+            self._log_image(
+                pl_module,
+                images=[self.content_image, self.style_image, generated_image],
+                captions=["Content image", "Style image", "Generated Image"],
+            )
+        pl_module.train()
+
+    def _prepare_image(self, image: torch.Tensor):
+        assert image.ndim == 4, "Expected input of shape (1, C, H, W)"
+        with torch.no_grad():
+            image = to_numpy(denormalize(image[0]).detach().cpu())
+        return image
+
+    def _log_image(self, pl_module, images, captions=None, section="samples"):
+        pl_module.logger.experiment.log(
+            {
+                section: [
+                    Image(self._prepare_image(image), caption=caption)
+                    for (image, caption) in zip(images, captions)
+                ]
+            },
+            step=pl_module.trainer.global_step,
+        )
 
 
 def main(args):

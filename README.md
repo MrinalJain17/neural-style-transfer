@@ -14,10 +14,17 @@ Execute the following command from the root of the repository to install the pro
 
 ## Requirements
 
+### Base Requirements
+
 1. Python (>=3.7)
 2. PyTorch (>=1.7)
 3. Torchvision (>=0.8)
 4. [Weights and Biases](https://github.com/wandb/client) - For visualization
+
+### Additional Requirements
+
+[PyTorch-Lightning](https://github.com/PyTorchLightning/pytorch-lightning) is required
+for executing Fast Style Transfer:
 
 ## References
 
