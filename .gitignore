@@ -236,3 +236,4 @@ $RECYCLE.BIN/
 # Custom
 wandb_artifacts/
 wandb/
+coco/
