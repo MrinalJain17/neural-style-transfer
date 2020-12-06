@@ -14,14 +14,9 @@ def conv_layer(in_channels, out_channels, kernel_size=3, stride=1):
 
 
 def deconv_layer(in_channels, out_channels, kernel_size=3, stride=1):
-    return nn.ConvTranspose2d(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=kernel_size,
-        stride=stride,
-        padding=(kernel_size // 2),
-        output_padding=(stride // 2),
-        bias=False,
+    return nn.Sequential(
+        nn.Upsample(scale_factor=2),
+        conv_layer(in_channels, out_channels, kernel_size, stride),
     )
 
 
@@ -76,9 +71,9 @@ class TransformationNetwork(nn.Module):
             ResidualBlock(),
         )
         self.upsample = nn.Sequential(
-            basic_block(128, 64, 3, 2, transpose=True),
-            basic_block(64, 32, 3, 2, transpose=True),
-            basic_block(32, 3, 9, 1, transpose=True, norm=False, activation=False),
+            basic_block(128, 64, 3, 1, transpose=True),
+            basic_block(64, 32, 3, 1, transpose=True),
+            basic_block(32, 3, 9, 1, norm=False, activation=False),
             nn.Tanh(),
         )
 
