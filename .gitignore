@@ -237,4 +237,3 @@ $RECYCLE.BIN/
 wandb_artifacts/
 wandb/
 coco/
-lightning_logs/
