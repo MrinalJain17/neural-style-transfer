@@ -25,8 +25,8 @@ class FastStyleTransfer(pl.LightningModule):
         style: str,
         batch_size: int = 4,
         alpha: int = 5.25e-07,
-        tv_strength: float = 7e-9,
-        **kwargs
+        tv_strength: float = 7e-09,
+        **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters("style", "batch_size", "alpha", "tv_strength")
@@ -58,7 +58,7 @@ class FastStyleTransfer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         _, content_features = self.vgg_features(batch)
 
-        generated_images = self.forward(batch)
+        generated_images = self(batch)
         generated_style, generated_content = self.vgg_features(generated_images)
 
         style_loss = (
@@ -103,6 +103,7 @@ class FastStyleTransfer(pl.LightningModule):
             shuffle=True,
             num_workers=cpu_count(),
             pin_memory=True,
+            drop_last=True,
         )
 
     @staticmethod
@@ -118,7 +119,7 @@ class FastStyleTransfer(pl.LightningModule):
         parser.add_argument(
             "--tv_strength",
             type=float,
-            default=7e-9,
+            default=7e-09,
             help="Strength of the total variation loss",
         )
 
@@ -130,22 +131,26 @@ class ExamplesLoggingCallback(Callback):
 
     def __init__(self, content="kinkaku_ji", seed=None) -> None:
         super().__init__()
+        self.log_every_n_steps = 2000
         self.content_image = load_content(content, resize=[256, 256]).unsqueeze(0)
 
     def on_fit_start(self, trainer, pl_module):
         self.style_image = pl_module.style_image[:1, :, :, :]  # Shape: (1, C, H, W)
         self.content_image = self.content_image.to(pl_module.device)
 
-    def on_train_epoch_end(self, trainer, pl_module, outputs):
-        pl_module.eval()
-        with torch.no_grad():
-            generated_image = pl_module.forward(self.content_image)
-            self._log_image(
-                pl_module,
-                images=[self.content_image, self.style_image, generated_image],
-                captions=["Content image", "Style image", "Generated Image"],
-            )
-        pl_module.train()
+    def on_train_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+    ):
+        if (batch_idx + 1) % self.log_every_n_steps == 0:
+            pl_module.eval()
+            with torch.no_grad():
+                generated_image = pl_module(self.content_image)
+                self._log_image(
+                    pl_module,
+                    images=[self.content_image, self.style_image, generated_image],
+                    captions=["Content image", "Style image", "Generated Image"],
+                )
+            pl_module.train()
 
     def _prepare_image(self, image: torch.Tensor):
         assert image.ndim == 4, "Expected input of shape (1, C, H, W)"
@@ -175,6 +180,7 @@ def main(args):
     # Trainer
     trainer = Trainer.from_argparse_args(args)
     trainer.fit(model)
+    trainer.save_checkpoint(f"{ARTIFACTS_PATH}/{args.style}.ckpt")
 
 
 if __name__ == "__main__":
