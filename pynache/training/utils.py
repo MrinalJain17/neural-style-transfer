@@ -1,6 +1,6 @@
-import torch
 from pynache.utils import to_numpy, to_tensor
 from skimage.color import rgb2yiq, yiq2rgb
+import torch
 
 
 def _add_color(content: torch.Tensor, generated: torch.Tensor) -> torch.Tensor:

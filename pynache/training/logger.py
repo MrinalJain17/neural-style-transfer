@@ -1,11 +1,11 @@
 from pathlib import Path
 
-import torch
-import wandb
 from pynache.data.transforms import denormalize
 from pynache.paths import REPOSITORY_ROOT
 from pynache.training.utils import _add_color
 from pynache.utils import to_numpy
+import torch
+import wandb
 
 ARTIFACTS_PATH = (Path(REPOSITORY_ROOT) / "wandb_artifacts").as_posix()
 Path(ARTIFACTS_PATH).mkdir(exist_ok=True)

@@ -1,8 +1,8 @@
 from typing import Dict, List, Tuple
 
+from pynache.paths import VGG_NORMALIZED_STATE_DICT
 import torch
 import torch.nn as nn
-from pynache.paths import VGG_NORMALIZED_STATE_DICT
 from torchvision import models
 
 VGG_LAYER_MAP: Dict[int, str] = {

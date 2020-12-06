@@ -1,14 +1,14 @@
 from argparse import ArgumentParser
 from typing import List
 
-import torch
-import torch.optim as optim
 from pynache.data import load_content, load_style
-from pynache.models import VGGFeatures, losses
+from pynache.models import losses, VGGFeatures
 from pynache.models.vgg import FEATURES_CONFIG
 from pynache.training.logger import WandbLogger
 from pynache.utils import to_numpy, to_tensor
 from skimage.exposure import match_histograms
+import torch
+import torch.optim as optim
 from tqdm import tqdm
 
 SEED = 42999

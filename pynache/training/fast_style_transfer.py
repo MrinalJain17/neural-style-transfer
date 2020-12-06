@@ -1,18 +1,18 @@
 from argparse import ArgumentParser
 from multiprocessing import cpu_count
 
-import pytorch_lightning as pl
-import torch
-import torch.optim as optim
 from pynache.data import load_content, load_style
 from pynache.data.datasets import get_coco
 from pynache.data.transforms import denormalize
-from pynache.models import TransformationNetwork, VGGFeatures, losses
+from pynache.models import losses, TransformationNetwork, VGGFeatures
 from pynache.training.logger import ARTIFACTS_PATH
 from pynache.utils import to_numpy
-from pytorch_lightning import Trainer, seed_everything
+import pytorch_lightning as pl
+from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import WandbLogger
+import torch
+import torch.optim as optim
 from torch.utils.data import DataLoader
 from wandb import Image
 
