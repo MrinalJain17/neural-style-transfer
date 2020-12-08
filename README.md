@@ -19,7 +19,8 @@ Execute the following command from the root of the repository to install the pro
 1. Python (3.7)
 2. PyTorch (1.7)
 3. Torchvision (0.8)
-4. [Weights and Biases](https://github.com/wandb/client) - For visualization
+4. Tqdm - For displaying progress bars
+5. [Weights and Biases](https://github.com/wandb/client) - For visualization
 
 ### Additional Requirements
 
