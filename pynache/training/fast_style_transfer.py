@@ -38,10 +38,10 @@ class FastStyleTransfer(pl.LightningModule):
 
         # Loss functions and networks
         self.transformation_network = TransformationNetwork()
-        self.vgg_features = VGGFeatures(config="recommended")
+        self.vgg_features = VGGFeatures(config="default")
         self.compute_style_loss = losses.StyleLossChained(
             num_layers=len(self.vgg_features.style_layers),
-            weights="recommended",
+            weights="default",
             activation_shift=True,
         )
         self.compute_content_loss = losses.ContentLoss()
