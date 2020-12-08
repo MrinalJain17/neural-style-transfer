@@ -74,7 +74,6 @@ class TransformationNetwork(nn.Module):
             basic_block(128, 64, 3, 1, transpose=True),
             basic_block(64, 32, 3, 1, transpose=True),
             basic_block(32, 3, 9, 1, norm=False, activation=False),
-            nn.Tanh(),
         )
 
     def forward(self, x):
