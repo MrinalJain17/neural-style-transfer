@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import List
 
-import torch
 from pynache.data.transforms import get_transform
 from pynache.paths import DEFAULT_IMAGES
+import torch
 from torchvision.io import read_image
 
 STYLE_ROOT: Path = Path(DEFAULT_IMAGES) / "inputs" / "style"

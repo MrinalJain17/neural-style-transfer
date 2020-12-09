@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="neural_style_transfer",
@@ -8,5 +8,5 @@ setup(
     author_email="mrinal.jain@nyu.edu",
     url="https://github.com/MrinalJain17/neural-style-transfer",
     install_requires=[],
-    packages=find_packages(exclude=["images"]),
+    packages=find_packages(exclude=["images", "coco", "wandb_artifacts"]),
 )

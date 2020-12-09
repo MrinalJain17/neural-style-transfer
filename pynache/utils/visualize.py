@@ -2,8 +2,8 @@ from typing import Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from pynache.utils import to_numpy
+import torch
 
 
 def plot_tensor(
