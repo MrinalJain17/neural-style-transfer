@@ -1,7 +1,5 @@
 # Neural Style Transfer
 
-:warning: Work In Progress :warning:
-
 ## Installation
 
 Execute the following command from the root of the repository to install the project:

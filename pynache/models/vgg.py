@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
+# The output is taken after the ReLU activation layers for each convolution
 VGG_LAYER_MAP: Dict[int, str] = {
     1: "conv1_1",
     3: "conv1_2",

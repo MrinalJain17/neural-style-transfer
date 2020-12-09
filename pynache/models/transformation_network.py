@@ -1,3 +1,30 @@
+"""This module implements the image transformation network as described in [1].
+
+Differences from original paper:
+--------------------------------
+
+- The authors in [1] use "deconvolution" for upsampling. We instead use
+interpolation in conjunction with convolutions with the hope to attenuate the
+"checkerboard-effect" as explained here - https://distill.pub/2016/deconv-checkerboard/
+
+- Batch normalization is replaced with Instance normalization as described in [2].
+
+- We have removed the final tanh activation because it produced darker images.
+
+References
+----------
+
+[1] Johnson J., Alahi A., Fei-Fei L. (2016)
+Perceptual Losses for Real-Time Style Transfer and Super-Resolution.
+In: Leibe B., Matas J., Sebe N., Welling M. (eds) Computer Vision – ECCV 2016.
+ECCV 2016. Lecture Notes in Computer Science, vol 9906. Springer, Cham.
+https://doi.org/10.1007/978-3-319-46475-6_43
+
+[2] Ulyanov, D., A. Vedaldi and V. Lempitsky.
+Instance Normalization: The Missing Ingredient for Fast Stylization.
+ArXiv abs/1607.08022 (2016)
+
+"""
 import torch.nn as nn
 
 

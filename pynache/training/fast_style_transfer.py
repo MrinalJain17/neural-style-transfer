@@ -1,3 +1,18 @@
+###################################################################################
+#                             Fast Style Transfer
+#                             -------------------
+#
+# Here, we attempt to reproduce the results in [1] using the components implemented
+# in this repository. The module is experimental and has not been tested/tuned yet.
+#
+# [1] Johnson J., Alahi A., Fei-Fei L. (2016)
+# Perceptual Losses for Real-Time Style Transfer and Super-Resolution.
+# In: Leibe B., Matas J., Sebe N., Welling M. (eds) Computer Vision – ECCV 2016.
+# ECCV 2016. Lecture Notes in Computer Science, vol 9906. Springer, Cham.
+# https://doi.org/10.1007/978-3-319-46475-6_43
+#
+###################################################################################
+
 from argparse import ArgumentParser
 from multiprocessing import cpu_count
 

@@ -1,4 +1,4 @@
-"""Different components comprising the perceptual loss
+"""Different components comprising the perceptual loss.
 
 Note that the loss functions do not normalize with respect to the batch size.
 """
